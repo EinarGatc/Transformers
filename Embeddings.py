@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn 
 import random
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer, BertModel, BertConfig
 import math
 
 random_seed = 42
@@ -20,7 +20,7 @@ class InputEmbedding(nn.Module):
         super(InputEmbedding, self).__init__()
         self.embed_size = embed_size
 
-    def getEmbedding(self, text:[str]):
+    def getEmbedding(self, text: list[str]):
         encoding = tokenizer.batch_encode_plus(
             text,
             padding=True,              # Pad to the maximum sequence length
@@ -30,11 +30,17 @@ class InputEmbedding(nn.Module):
         )
         input_ids = encoding['input_ids']
         attention_mask = encoding['attention_mask']  # Attention mask
-        print(input_ids)
-        print(attention_mask)
+
+        with torch.no_grad():
+            outputs = model(input_ids, attention_mask=attention_mask)
+            word_embeddings = outputs.last_hidden_state
+
+        return word_embeddings
+        
 
 
 if __name__ == "__main__":
     text = ["&quot;GeeksforGeeks is a computer science portal&quot"]
     o1 = InputEmbedding(512)
-    o1.getEmbedding(text)
+    word_embeddings = o1.getEmbedding(text)
+    print(word_embeddings.shape)
