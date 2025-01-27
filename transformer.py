@@ -77,10 +77,6 @@ class MaskedAttention(nn.Module):
 
         return attention
     
-    def create_mask(size):
-        # Create lower triangular matrix (subsequent positions masked)
-        mask = torch.triu(torch.ones(size, size), diagonal=1).bool()
-        return mask.masked_fill(mask == True, float('-inf'))
 
 class Attention(nn.Module):
     def __init__(self, d_model, d_head):
@@ -93,10 +89,10 @@ class Attention(nn.Module):
         self.key = nn.Linear(d_model, d_head)
         self.value = nn.Linear(d_model, d_head)
 
-    def forward(self, x):
-        q_p = x @ self.query
-        k_p = x @ self.key
-        v_p = x @ self.value
+    def forward(self, x1, x2=None):
+        q_p = x1 @ self.query
+        k_p = x1 @ self.key
+        v_p = x2 @ self.value
 
         attention = q_p @ k_p
         attention = attention / torch.sqrt(self.d_head)
@@ -113,9 +109,11 @@ class TranformerBlock(nn.Module):
         self.ffn = FeedForward(d_model, d_model)
         self.norm2 = nn.LayerNorm()
     
-    def forward(self, x):
-        attention = self.attention(x)
-        attention = attention + x
+    def forward(self, x1, x2=None):
+        x2 = x2 if x2 else x1
+
+        attention = self.attention(x1)
+        attention = attention + x2
         attention = self.norm1(attention)
         
         final_scores = self.ffn(attention)
@@ -123,12 +121,27 @@ class TranformerBlock(nn.Module):
         final_scores = self.norm2(final_scores)
         
         return final_scores
+    
+class MaskedTranformerBlock(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super().__init__()
+        self.attention = MultiHeadAttention(d_model, num_heads)
+        self.norm1 = nn.LayerNorm()
+    
+    def forward(self, x1):
+        attention = self.attention(x1)
+        attention = attention + x1
+        attention = self.norm1(attention)
+        
+        return attention
 
 
 
 class Transformer(nn.Module):
-    def __init__(self):
+    def __init__(self, d_model, num_heads):
         super().__init__()
+        self.encoderBlock = TranformerBlock(d_model, num_heads)
+        self.decoderMaskedBlock = Mas
 
 class FeedForward(nn.Module):
    def __init__(self, d_model, d_ff):
